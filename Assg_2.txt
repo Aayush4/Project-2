@@ -1,0 +1,269 @@
+#include <Servo.h>
+#include <IRremote.h>
+
+int us_1 = 13; //entrance ultrasonic sensor
+int servo_1 = 12; //entrance gate
+int ir_1 = 11; //connected to red LED
+int ir_2 = 10; //connected to blue LED 
+int ir_3 = 9;  //connected to green LED
+int ir_4 = 8;  //connected to yellow LED
+int led_r = 7;
+int led_b = 6;
+int led_g = 5;
+int led_y = 4;
+int us_2 = 3; //exit ultrasonic sensor
+int servo_2 = 2; //exit gate
+
+int led_r_stat;  //status of red LED, i.e. HIGH or LOW 
+int led_b_stat;  //status of blue LED, i.e. HIGH or LOW 
+int led_g_stat;  //status of green LED, i.e. HIGH or LOW 
+int led_y_stat;  //status of yellow LED, i.e. HIGH or LOW 
+
+int enter = 0;  //checks if a customer has entered the drive through 
+
+Servo ptr1; //servo object for servo_1
+Servo ptr2; //servo object for servo_2
+IRrecv ir1_rec(ir_1);  //creates a IR receivable object for 1st IR sensor depicting object A
+IRrecv ir2_rec(ir_2);  //creates a IR receivable object for 2nd IR sensor depicting object B
+IRrecv ir3_rec(ir_3);  //creates a IR receivable object for 3rd IR sensor depicting object C
+IRrecv ir4_rec(ir_4);  //creates a IR receivable object for 4th IR sensor depicting object D
+
+decode_results option; //an object to detect the input from the IR remote 
+
+float dist1; // distance(centimeters) of vehicle from entrance gate
+float dist2; // distance(centimeters) of vehicle from exit gate 
+
+void setup() {
+Serial.begin(9600);
+Serial.println("WELCOME TO NITW DRIVE THROUGH!!!");
+Serial.println("********************************");
+
+pinMode(ir_1,INPUT);
+pinMode(ir_2,INPUT);
+pinMode(ir_3,INPUT);
+pinMode(ir_4,INPUT);
+pinMode(led_r,OUTPUT);
+pinMode(led_b,OUTPUT);
+pinMode(led_g,OUTPUT);
+pinMode(led_y,OUTPUT);
+pinMode(servo_1,OUTPUT);
+pinMode(servo_2,OUTPUT);
+
+ptr1.attach(servo_1);
+ptr2.attach(servo_2);
+
+ir1_rec.enableIRIn(); //starts the 1st IR sensor
+ir2_rec.enableIRIn(); //starts the 2nd IR sensor
+ir3_rec.enableIRIn(); //starts the 3rd IR sensor
+ir4_rec.enableIRIn(); //starts the 4th IR sensor
+}
+
+void loop() {
+  ptr1.write(0); //closes the entrance servo motor(gate) initially
+  ptr2.write(0); //closes the exit servo motor(gate) initially
+ pinMode(us_1,OUTPUT);
+ digitalWrite(us_1, LOW); 
+ delayMicroseconds(2); 
+
+ digitalWrite(us_1, HIGH);
+ delayMicroseconds(10); 
+ 
+ digitalWrite(us_1, LOW);
+
+ pinMode(us_1,INPUT); 
+ dist1 = pulseIn(us_1,HIGH)*0.0343/2.; //distance in cms from 'entrance' gate
+ 
+ pinMode(us_2,OUTPUT);
+ digitalWrite(us_2, LOW); 
+ delayMicroseconds(2); 
+
+ digitalWrite(us_2, HIGH);
+ delayMicroseconds(10); 
+ 
+ digitalWrite(us_2, LOW);
+
+ pinMode(us_2,INPUT); 
+ dist2 = pulseIn(us_2,HIGH)*0.0343/2.; //distance in cms from 'exit' gate
+ 
+ //***Code for opening of entrance motor(gate)***
+ if(dist1<60)   //will open the entrance gate when distance of vehicle is less than 60cms(practically the distance could be nearly 1 metre). 
+ {
+  Serial.println("Entrance Gate Open");
+   for(int i=0;i<=90;i=i+2)
+  {
+    ptr1.write(i);
+    delay(25);
+  }
+  delay(1500);    //keeps the gate open for 1.5 seconds(in real time the gate may be kept open for 8-9 seconds)
+  for(int i=90;i>=0;i=i-2)
+  {
+    ptr1.write(i);
+    delay(25);
+  }
+  Serial.println("Entrance Gate Closed");
+  Serial.println();
+  enter = 1;  //shows that the person has entered the drive through
+ }
+  
+ //***Help list for use of IR remote***
+ if(enter == 1)
+ {
+  Serial.println("Press:");    
+  Serial.println("0: To Select 'Item A'             1: To Remove 'Item A' from cart");
+  Serial.println("2: To Select 'Item B'             3: To Remove 'Item B' from cart");
+  Serial.println("4: To Select 'Item C'             5: To Remove 'Item C' from cart");
+  Serial.println("6: To Select 'Item D'             7: To Remove 'Item D' from cart");
+  Serial.println("           9: To confirm order and checkout");
+  Serial.println();
+  Serial.println("### The LEDs indicate which items have been chosen ###");
+  Serial.println();
+ }
+
+//***Code for selection of items from menu*** 
+while(option.value != 0xFD58A7 && enter == 1)
+{
+ if (ir1_rec.decode(&option)) {
+     if(option.value == 0xFD30CF) //checks if button '0' is pressed on the remote
+     { 
+      if(led_r_stat == HIGH) //checks if red LED is already on
+      Serial.println("Item has already been selected");
+      else
+      {
+        led_r_stat = HIGH;
+        digitalWrite(led_r,led_r_stat);   
+        Serial.println("Item A has been selected");
+      }
+     }
+    else if(option.value == 0xFD08F7)  //checks if button '1' is pressed on the remote
+    {
+      if(led_r_stat == LOW) //checks if red LED is already off
+      Serial.println("Item cannot be removed as it is not selected!!!");
+      else
+      {
+        led_r_stat = LOW;
+        digitalWrite(led_r,led_r_stat); 
+        Serial.println("Item A has been removed");
+      }
+    }
+  }
+  if (ir2_rec.decode(&option)) {
+      if(option.value == 0xFD8877)  //checks if button '2' is pressed on the remote
+      { 
+        if(led_b_stat == HIGH)//checks if blue LED is already on
+        Serial.println("Item has already been selected");
+        else
+        {
+          led_b_stat = HIGH;
+          digitalWrite(led_b,led_b_stat);   
+          Serial.println("Item B has been selected");
+        }
+      }
+    else if(option.value == 0xFD48B7)  //checks if button '3' is pressed on the remote
+    {
+      if(led_b_stat == LOW)//checks if blue LED is already off
+      Serial.println("Item cannot be removed as it is not selected!!!");
+      else
+      {
+        led_b_stat = LOW;
+        digitalWrite(led_b,led_b_stat); 
+        Serial.println("Item B has been removed");
+      }
+    }
+  }
+  if (ir3_rec.decode(&option)) {
+    if(option.value == 0xFD28D7)  //checks if button '4' is pressed on the remote
+    {
+      if(led_g_stat == HIGH)//checks if green LED is already on
+        Serial.println("Item has already been selected");
+        else
+        {
+          led_g_stat = HIGH;
+          digitalWrite(led_g,led_g_stat);   
+          Serial.println("Item C has been selected");
+        }
+    }
+    else if(option.value == 0xFDA857)  //checks if button '5' is pressed on the remote
+    {
+      if(led_g_stat == LOW)//checks if green LED is already off
+      Serial.println("Item cannot be removed as it is not selected!!!");
+      else
+      {
+        led_g_stat = LOW;
+        digitalWrite(led_g,led_g_stat); 
+        Serial.println("Item C has been removed");
+      }
+    }
+  }
+  if (ir4_rec.decode(&option)) {
+    if(option.value == 0xFD6897)  //checks if button '6' is pressed on the remote
+    {
+      if(led_y_stat == HIGH)//checks if yellow LED is already on
+        Serial.println("Item has already been selected");
+        else
+        {
+          led_y_stat = HIGH;
+          digitalWrite(led_y,led_y_stat);   
+          Serial.println("Item D has been selected");
+        }    
+    }
+    else if(option.value == 0xFD18E7)  //checks if button '7' is pressed on the remote
+    {
+      if(led_y_stat == LOW)//checks if yellow LED is already off
+      Serial.println("Item cannot be removed as it is not selected!!!");
+      else
+      {
+        led_y_stat = LOW;
+        digitalWrite(led_y,led_y_stat); 
+        Serial.println("Item D has been removed");
+      }
+    } 
+    ir1_rec.resume(); // Receive the next value from IR sensor 1
+    ir2_rec.resume(); // Receive the next value from IR sensor 2
+    ir3_rec.resume(); // Receive the next value from IR sensor 3
+    ir4_rec.resume(); // Receive the next value from IR sensor 4
+  }
+  delay(100);
+}
+ if(enter == 1)  //checks if the customer has placed any order
+ { 
+  Serial.println();
+  Serial.println("Your order has been delivered.");
+ }
+  
+  digitalWrite(led_r,LOW);  //switches off the red LED after the customer has checked out
+  digitalWrite(led_b,LOW);  //switches off the blue LED after the customer has checked out
+  digitalWrite(led_g,LOW);  //switches off the green LED after the customer has checked out
+  digitalWrite(led_y,LOW);  //switches off the yellow LED after the customer has checked out
+
+  led_r_stat = LOW;  //resets the red LED to LOW for new customer
+  led_b_stat = LOW;  //resets the blue LED to LOW for new customer
+  led_g_stat = LOW;  //resets the green LED to LOW for new customer
+  led_y_stat = LOW;  //resets the yellow LED to LOW for new customer
+
+  option.value = 0xFD9867;  //changing option value to random value for new customer
+  
+  enter = 0; //verifies that the order has been placed and the drive-through is ready for another customer
+
+//***Code for opening of exit motor(gate)*** 
+  if(dist2<60)     //will open the exit gate when distance of vehicle is less than 60cms(practically the distance could be nearly 1 metre). 
+ {
+  Serial.println();
+  Serial.println("Exit Gate Open");
+  for(int i=0;i<=90;i=i+2)
+  {
+    ptr2.write(i);
+    delay(25);
+  }
+  Serial.println();
+  Serial.println("Thank You For Visiting");
+  delay(1500);                      //keeps the gate open for 1.5 seconds(in real time the gate may be kept open for 8-9 seconds)
+  for(int i=90;i>=0;i=i-2)
+  {
+    ptr2.write(i);
+    delay(25);
+  }
+  Serial.println();
+  Serial.println("Exit Gate Closed");
+  Serial.println();
+ }
+}
